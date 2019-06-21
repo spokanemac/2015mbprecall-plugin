@@ -1,0 +1,67 @@
+#!/bin/bash
+# Plugin:       15-inch MacBook Battery Quality Program
+# Description:  Watchman Monitoring custom plugin to report if a system qualifies for the 15-inch MBP Quality Program.
+# Author:       Jack-Daniyel Strong <jack@jdstrong.com>
+# Date:         21-Jun-2019
+# Version:      0.1
+# ==============================================================================
+
+
+# via Mike Lynn & Elliot Jordan from MacAdmins Slack
+# https://macadmins.slack.com/archives/C0533K6HC/p1561084220225200?thread_ts=1561084141.225100&cid=C0533K6HC
+# and logic from
+# https://soundmacguy.wordpress.com/2019/06/21/2015-macbook-pro-battery-recall-checker-script/
+
+lookup() {
+    GUID="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+    DATA="{\"serial\":\"$1\",\"GUID\":\"$GUID\"}\""
+    curl -s 'https://qualityprograms.apple.com/snlookup/062019' \
+        -XPOST \
+        -H 'Accept: */*' \
+        -H 'Content-Type: text/plain;charset=UTF-8' \
+        -H 'Origin: https://support.apple.com' \
+        -H 'Accept-Language: en-us' \
+        -H 'Host: qualityprograms.apple.com' \
+        -H 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.1.1 Safari/605.1.15' \
+        -H 'Referer: https://support.apple.com/15-inch-macbook-pro-battery-recall' \
+        -H 'Accept-Encoding: br, gzip, deflate' \
+        -H 'Connection: keep-alive' \
+        --data-binary "$DATA"
+#        --data-binary "$DATA" | grep -q "E00" && echo "$1"
+}
+
+# See if we've already run and determined status.
+if [[ ! -e /usr/local/.qualityProgram ]]; then
+    serial=$(defaults read /Library/MonitoringClient/ClientData/UnifiedStatus.plist SerialNumber)
+
+    resp=$(lookup $serial)
+#    echo -e $resp
+
+    if [[ "$resp" == *'"status":"E00"'* ]]; then
+    echo "$serial,eligible"
+    touch /usr/local/.qualityProgram
+    exit 200
+    elif [[ "$resp" == *'"status":"E01"'* ]]; then
+    echo "$serial,ineligible"
+    touch /usr/local/.qualityProgram
+    exit 0
+    elif [[ "$resp" == *'"status":"E99"'* ]]; then
+    echo "$serial = error please recheck"
+    exit 20
+    elif [[ "$resp" == *'"status":"FE01"'* ]]; then
+    echo "$serial,empty serial"
+    exit 20
+    elif [[ "$resp" == *'"status":"FE02"'* ]]; then
+    echo "$serial,invalid serial"
+    exit 20
+    elif [[ "$resp" == *'"status":"FE03"'* ]]; then
+    echo "$serial,error please recheck"
+    exit 20
+    else
+    echo "$serial,unknown result please recheck"
+    exit 20
+    fi
+fi
+
+
+exit 0
