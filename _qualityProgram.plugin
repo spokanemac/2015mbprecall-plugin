@@ -31,7 +31,7 @@ lookup() {
 }
 
 # See if we've already run and determined status.
-if [[ ! -e /usr/local/.qualityProgram ]]; then
+if [[ ! -e /Library/MonitoringClient/.qualityProgram ]]; then
     serial=$(defaults read /Library/MonitoringClient/ClientData/UnifiedStatus.plist SerialNumber)
 
     resp=$(lookup $serial)
@@ -39,11 +39,11 @@ if [[ ! -e /usr/local/.qualityProgram ]]; then
 
     if [[ "$resp" == *'"status":"E00"'* ]]; then
     echo "$serial,eligible"
-    touch /usr/local/.qualityProgram
+    touch /Library/MonitoringClient/.qualityProgram
     exit 200
     elif [[ "$resp" == *'"status":"E01"'* ]]; then
     echo "$serial,ineligible"
-    touch /usr/local/.qualityProgram
+    touch /Library/MonitoringClient/.qualityProgram
     exit 0
     elif [[ "$resp" == *'"status":"E99"'* ]]; then
     echo "$serial = error please recheck"
